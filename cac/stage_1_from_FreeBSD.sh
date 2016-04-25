@@ -11,8 +11,8 @@ msg "Enter mirror to use: "
 read mirror
 if [ -z mirror]
     then 
-        echo "no mirror selected, using mirror.kernel.org"
-        mirror=http://mirrors.kernel.org/archlinux/
+        msg "no mirror selected, using mirror.kernel.org"
+        mirror=http://mirrors.kernel.org/
 fi
 msg "using mirror $mirror"
 
@@ -21,7 +21,7 @@ iso=archlinux-"$date"-dual.iso
 arch=x86_64
 
 msg "Downloading ISO from $mirror"
-curl -C - -#O "$mirror/iso/$date/$iso" || die "download iso"
+curl -C -#O "$mirror/archlinux/iso/latest/$iso" || die "download iso"
 
 msg "Mounting ISO to /mnt"
 mdconfig -a -t vnode -f "$iso" -u 1
