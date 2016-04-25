@@ -9,6 +9,11 @@ which unsquashfs || die 'find unsquashfs'
 
 msg "Enter mirror to use: "
 read mirror
+if [ -z mirror]
+    then 
+        echo "no mirror selected, using mirror.kernel.org"
+        mirror=http://mirrors.kernel.org/archlinux/
+fi
 msg "using mirror $mirror"
 
 date="$(date -u +'%Y.%m.01')"
@@ -19,10 +24,11 @@ msg "Downloading ISO from $mirror"
 curl -C - -#O "$mirror/iso/$date/$iso" || die "download iso"
 
 msg "Mounting ISO to /mnt"
-mount -o loop "$iso" /mnt || die "mount iso"
+mdconfig -a -t vnode -f "$iso" -u 1
+mount -t cd9660 /dev/md1 /mnt/cdrom || die "mount iso"
 
 msg "Copying squashfs"
-cp -v /mnt/arch/"$arch"/airootfs.* . || die "copy squashfs"
+cp -v /mnt/cdrom/arch/"$arch"/airootfs.* . || die "copy squashfs"
 
 msg "Verifying squashfs"
 md5sum -c airootfs.md5 || die "verify squashfs"
