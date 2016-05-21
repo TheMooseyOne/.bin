@@ -80,7 +80,7 @@ while [ opt != '' ]
 	umount /mnt || echo -e "${RED_TEXT}Unmount ISO failed...${NORMAL}"
 	unsquashfs airootfs.sfs || echo -e "${RED_TEXT}Unsquash failed..${NORMAL}"
 	rm -- airootfs.* || echo -e "${RED_TEXT}Failed to clean up old airootfs files...${NORMAL}"
-	mkdir -p new_root  || echo -e "${RED_TEX}Creating new_root failed...${NORMAL}"
+	mkdir -p new_root  || echo -e "${RED_TEXt}Creating new_root failed...${NORMAL}"
 	nbytes="$(($(du -s squashfs-root|cut -f1)+100000))K"
 	mount -o size="$nbytes" -t tmpfs none ./new_root ||  echo -e "${RED_TEXT}Mounting new_root failed...${NORMAL}"
 	for i in squashfs-root/*; do
@@ -101,7 +101,7 @@ while [ opt != '' ]
 	systemctl daemon-reexec
 	swapoff -a
 
-	echo -e "${NUMBER}Verify new_root and and run stage2 from new_root/root/mooseAIF.sh${NORMAL}"
+	echo -e "${NUMBER}Verify new_root, run new_root/root/mooseAIF.sh to start Stage 2${NORMAL}"
 	read -n1 -s
 	clear
 	exit 1;
