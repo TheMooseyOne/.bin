@@ -27,7 +27,7 @@ function option_picked() {
 }
 
 function err() {
-    echo -e "${RED_TEXT}$1${NORMAL}";
+    echo -e "${RED_TEXT}$1${NORMAL}"; exit 1;
 }
 
 clear
@@ -44,7 +44,7 @@ while [ opt != '' ]
         which unsquashfs && echo -e "${MENU}Found unsquashfs... ${NORMAL}"|| err "Failed to find unsquashfs..."
         which mdconfig && echo -e "${MENU}Found mdconfig... ${NORMAL}"|| err "Failed to find mdconfig..."
         which sha1sum && echo -e "${MENU}Found sha1sum... ${NORMAL}"|| err "Failed to find sha1sum..."
-	which md5sm && echo -e "${MENU}Found md5sum... ${NORMAL}" || err "Failed to find md5sum..."
+	which md5sum && echo -e "${MENU}Found md5sum... ${NORMAL}" || err "Failed to find md5sum..."
 	which vgremove && echo -e "${MENU}Found vgremove... ${NORMAL}" || err "Failed to find vgremove..."
 	echo -e "${NUMBER}Press any key to continue...${NORMAL}"
 	read -n1 -s
@@ -127,57 +127,53 @@ while [ opt != '' ]
 	echo -e "${NUMBER}wish to continue...${NORMAL}"
 	read
 	[[ "$REPLY" != 'YES' ]] && exit 1
-	option_picekd "Unmounting old_root"
-	umount -R /old_root || err 'unmount old_root'
+	option_picked "Unmounting old_root"
+	umount -R /old_root || err "Failed to unmount old_root"
 	option_picked "Cleaning up old_root"
-	rm -rf /old_root || err 'clean up old_root'
+	rm -rf /old_root || err "Failed to clean up old_root"
 	option_picked "Killing LVM"
-	vgremove -ff centos || err 'kill LVM'
+	vgremove -ff centos || err "Failed to kill LVM"
 	option_picked "Setting DNS to use google 8.8.8.8"
-	echo 'nameserver 8.8.8.8' > /etc/resolv.conf || err 'set DNS'
+	echo 'nameserver 8.8.8.8' > /etc/resolv.conf || err "Failed to set DNS"
 	option_picked "Initializing the pacman keyring"
 	systemctl start haveged
 	pacman-key --init
 	pacman-key --populate archlinux
 
-read -r -d '' partition_scheme << 'EOF'
-label: dos
-label-id: 0x350346e6
-device: /dev/sda
-unit: sectors
+	read -r -d '' partition_scheme << 'EOF'
+	label: dos
+	label-id: 0x350346e6
+	device: /dev/sda
+	unit: sectors
+	/dev/sda1 : start=      2048, size=     +10G, type=83, bootable
+	EOF
 
-/dev/sda1 : start=      2048, size=     +10G, type=83, bootable
-EOF
+	option_picked "Partitioning disk"
+	sfdisk /dev/sda <<< "$partition_scheme" || err "Faield to partition disk..."
 
-msg 'Partitioning disk'
-sfdisk /dev/sda <<< "$partition_scheme" || die 'partition disk'
+	option_picked "Formatting disk"
+	mkfs.ext4 -F /dev/sda1 || err "Failed to format disk..."
+	mount /dev/sda1 /mnt || die 'mount disk'
 
-msg 'Formatting disk'
-mkfs.ext4 -F /dev/sda1 || die 'format disk'
+	def_package_list=('bash' 'bzip2' 'coreutils' 'device-mapper' 'diffutils' 'e2fsprogs' 'file' 
+	'filesystem' 'findutils' 'gawk' 'gcc-libs' 'gettext' 'glibc' 'grep' 'gzip'
+	'inetutils' 'iproute2' 'iputils' 'less' 'licenses' 'logrotate' 'man-db'
+	'man-pages' 'pacman' 'pciutils' 'perl' 'procps-ng' 'psmisc' 'sed' 'shadow'
+	'sysfsutils' 'systemd-sysvcompat' 'tar' 'texinfo' 'usbutils' 'util-linux'
+	'which' 'sudo' 'nftables' 'vim' 'syslinux' 'linux-grsec' 'paxd' 'gradm'
+	'openssh' 'tree' 'tmux' 'htop' 'lsof' 'lynx')
 
-msg 'Mounting disk'
-mount /dev/sda1 /mnt || die 'mount disk'
+	option_picked "Pacstrapping"
+	pacstrap /mnt "${def_package_list[@]}" || die 'pacstrap'
+	genfstab -U /mnt >> /mnt/etc/fstab || die 'generate an fstab'
 
-def_package_list=(
-   'bash' 'bzip2' 'coreutils' 'device-mapper' 'diffutils' 'e2fsprogs' 'file'
-   'filesystem' 'findutils' 'gawk' 'gcc-libs' 'gettext' 'glibc' 'grep' 'gzip'
-   'inetutils' 'iproute2' 'iputils' 'less' 'licenses' 'logrotate' 'man-db'
-   'man-pages' 'pacman' 'pciutils' 'perl' 'procps-ng' 'psmisc' 'sed' 'shadow'
-   'sysfsutils' 'systemd-sysvcompat' 'tar' 'texinfo' 'usbutils' 'util-linux'
-   'which' 'sudo' 'nftables' 'vim' 'syslinux' 'linux-grsec' 'paxd' 'gradm' 'zsh'
-   'zsh-syntax-highlighting' 'openssh' 'tree' 'tmux'
-)
-
-msg 'Pacstrapping'
-pacstrap /mnt "${def_package_list[@]}" || die 'pacstrap'
-
-msg 'Generating fstab'
-genfstab -U /mnt >> /mnt/etc/fstab || die 'generate an fstab'
-
-msg 'Generating Network Configuration'
-printf '[Match]\nName=ens33\n\n[Address]\n%s\n\n[Route]\n%s\n' \
+	option_picked "Generating Network Configuration"
+	printf '[Match]\nName=ens33\n\n[Address]\n%s\n\n[Route]\n%s\n' \
     "$(ip a show dev ens33 | awk '/inet / { print "Address=" $2 "\nBroadcast=" $4 }')" \
     "$(ip r show dev ens33 | awk 'NR == 1 { print "Gateway=" $3 }')" > /mnt/etc/systemd/network/wired.network
+	
+	option_picked "Generating Locale"
+	locale-gen || err "Failed to generate locale"
 	show_menu;
             ;;
 
