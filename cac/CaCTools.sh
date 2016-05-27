@@ -30,6 +30,10 @@ function err() {
     echo -e "${RED_TEXT}$1${NORMAL}"; exit 1;
 }
 
+function wrn() {
+    echo -e "${FGRED}$1${NORMAL}";
+}
+
 clear
 show_menu
 while [ opt != '' ]
@@ -81,18 +85,16 @@ while [ opt != '' ]
         #mount -t cd9660 /dev/md1 /mnt/cdrom || err "Failed to mount, check root..."
 
 	mount -o loop "$iso" /mnt/ || err "Failed to mount, check root..."
-	cp -v /mnt/cdrom/arch/"$arch"/airootfs.* . || err "Failed to copy squashfs..."
-	md5sum -c airootfs.md5
+	cp -v /mnt/arch/x86_64/airootfs.* . || err "Failed to copy squashfs..."
+	md5sum -c airootfs.md5 || wrn "Chechsum failed..."
 	umount /mnt || err "Unmount ISO failed..."
 	unsquashfs airootfs.sfs || err "Unsquash failed.."
-	rm -- airootfs.* || err "Failed to clean up old airootfs files..."
+	rm -- airootfs.* || wrn "Failed to clean up old airootfs files..."
 	mkdir -p new_root  || err "Creating new_root failed..."
 	nbytes="$(($(du -s squashfs-root|cut -f1)+100000))K"
 	mount -o size="$nbytes" -t tmpfs none ./new_root ||  err "Mounting new_root failed..."
-	for i in squashfs-root/*; do
-        cp -r "$i" ./new_root/
-        done;
-	rm -r -- squashfs-root
+	cp -rv ./squashfs-root/ ./new_root/ || err "Failed to copy squashfs to new_root..."
+	rm -r -- squashfs-root || wrn "Failed to remove squashfs..."
 	option_picked "Creating old_root"
 	mkdir -p new_root/old_root || err "Failed to create old_root..."
 	option_picked "Copying network information"
