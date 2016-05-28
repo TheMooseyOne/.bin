@@ -44,12 +44,12 @@ while [ opt != '' ]
     else
         case $opt in
         1) option_picked "Checking Tools";
-        which curl && echo -e "${MENU}Found curl... ${NORMAL}" || err "Failed to find curl..."
-        which unsquashfs && echo -e "${MENU}Found unsquashfs... ${NORMAL}"|| err "Failed to find unsquashfs..."
-        which mdconfig && echo -e "${MENU}Found mdconfig... ${NORMAL}"|| err "Failed to find mdconfig..."
-        which sha1sum && echo -e "${MENU}Found sha1sum... ${NORMAL}"|| err "Failed to find sha1sum..."
-	which md5sum && echo -e "${MENU}Found md5sum... ${NORMAL}" || err "Failed to find md5sum..."
-	which vgremove && echo -e "${MENU}Found vgremove... ${NORMAL}" || err "Failed to find vgremove..."
+        which curl && echo -e "${MENU}Found curl... ${NORMAL}" || wrn "Failed to find curl..."
+        which unsquashfs && echo -e "${MENU}Found unsquashfs... ${NORMAL}"|| wrn "Failed to find unsquashfs..."
+        which mdconfig && echo -e "${MENU}Found mdconfig... ${NORMAL}"|| wrn "Failed to find mdconfig..."
+        which sha1sum && echo -e "${MENU}Found sha1sum... ${NORMAL}"|| wrn "Failed to find sha1sum..."
+	which md5sum && echo -e "${MENU}Found md5sum... ${NORMAL}" || wrn "Failed to find md5sum..."
+	which vgremove && echo -e "${MENU}Found vgremove... ${NORMAL}" || wrn "Failed to find vgremove..."
 	echo -e "${NUMBER}Press any key to continue...${NORMAL}"
 	read -n1 -s
 	clear
@@ -87,7 +87,7 @@ while [ opt != '' ]
 	mount -o loop "$iso" /mnt/ || err "Failed to mount, check root..."
 	cp -v /mnt/arch/x86_64/airootfs.* . || err "Failed to copy squashfs..."
 	md5sum -c airootfs.md5 || wrn "Chechsum failed..."
-	umount /mnt || err "Unmount ISO failed..."
+	umount /mnt || wrn "Unmount ISO failed..."
 	unsquashfs airootfs.sfs || err "Unsquash failed.."
 	rm -- airootfs.* || wrn "Failed to clean up old airootfs files..."
 	mkdir -p new_root  || err "Creating new_root failed..."
@@ -100,7 +100,7 @@ while [ opt != '' ]
 	option_picked "Copying network information"
 	ip a >> new_root/root/ifcfgeth || err "Failed to get ip a info..."
         ip r >> new_root/root/ifcfgeth || err "Failed to get ip r info..."
-	cp ./mooseAIF.sh new_root/root/ && chmod 0755 new_root/root/mooseAIF.sh || err "Failed to move script to new_root...${NORMAL}"
+	cp ./mooseAIF.sh new_root/root/ && chmod 0755 new_root/root/mooseAIF.sh || wrn "Failed to move script to new_root...${NORMAL}"
 	option_picked "Making old root private"
 	mount --make-rprivate / || err "Failed to make old root private..."
 	option_picked "Modprobing"
@@ -129,10 +129,12 @@ while [ opt != '' ]
 	echo -e "${NUMBER}wish to continue...${NORMAL}"
 	read
 	[[ "$REPLY" != 'YES' ]] && exit 1
+	option_picked "Killing pids..."
+	fuser -k -m new_root/old_root
 	option_picked "Unmounting old_root"
 	umount -R /old_root || err "Failed to unmount old_root"
 	option_picked "Cleaning up old_root"
-	rm -rf /old_root || err "Failed to clean up old_root"
+	rm -rf /old_root || wrn "Failed to clean up old_root"
 	option_picked "Killing LVM"
 	vgremove -ff centos || err "Failed to kill LVM"
 	option_picked "Setting DNS to use google 8.8.8.8"
@@ -147,7 +149,7 @@ while [ opt != '' ]
 	label-id: 0x350346e6
 	device: /dev/sda
 	unit: sectors
-	/dev/sda1 : start=      2048, size=     +10G, type=83, bootable
+	/dev/sda1 : start=2048, size=+10G, type=83, bootable
 	EOF
 
 	option_picked "Partitioning disk"
