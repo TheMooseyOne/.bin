@@ -136,7 +136,7 @@ while [ opt != '' ]
 	option_picked "Cleaning up old_root"
 	rm -rf /old_root || wrn "Failed to clean up old_root"
 	option_picked "Killing LVM"
-	vgremove -ff centos || err "Failed to kill LVM"
+	vgremove -ff localhost-vg || err "Failed to kill LVM"
 	option_picked "Setting DNS to use google 8.8.8.8"
 	echo 'nameserver 8.8.8.8' > /etc/resolv.conf || err "Failed to set DNS"
 	option_picked "Initializing the pacman keyring"
@@ -144,32 +144,34 @@ while [ opt != '' ]
 	pacman-key --init
 	pacman-key --populate archlinux
 
-	read -r -d '' partition_scheme << 'EOF'
-	label: dos
-	label-id: 0x350346e6
-	device: /dev/sda
-	unit: sectors
-	/dev/sda1 : start=2048, size=+10G, type=83, bootable
-	EOF
+	#read -r -d '' partition_scheme << 'EOF'
+	#label: dos
+	#label-id: 0x350346e6
+	#device: /dev/sda
+	#unit: sectors
+	#/dev/sda1 : start=2048, size=+10G, type=83, bootable
+	#EOF
 
 	option_picked "Partitioning disk"
-	sfdisk /dev/sda <<< "$partition_scheme" || err "Faield to partition disk..."
+	#sfdisk /dev/sda <<< "$partition_scheme" || err "Faield to partition disk..."
 
 	option_picked "Formatting disk"
 	mkfs.ext4 -F /dev/sda1 || err "Failed to format disk..."
-	mount /dev/sda1 /mnt || die 'mount disk'
+	mount /dev/sda1 /mnt || err 'mount disk'
 
 	def_package_list=('bash' 'bzip2' 'coreutils' 'device-mapper' 'diffutils' 'e2fsprogs' 'file' 
-	'filesystem' 'findutils' 'gawk' 'gcc-libs' 'gettext' 'glibc' 'grep' 'gzip'
+	'filesystem' 'findutils' 'gawk' 'gettext' 'grep' 'gzip'
 	'inetutils' 'iproute2' 'iputils' 'less' 'licenses' 'logrotate' 'man-db'
 	'man-pages' 'pacman' 'pciutils' 'perl' 'procps-ng' 'psmisc' 'sed' 'shadow'
 	'sysfsutils' 'systemd-sysvcompat' 'tar' 'texinfo' 'usbutils' 'util-linux'
-	'which' 'sudo' 'nftables' 'vim' 'syslinux' 'linux-grsec' 'paxd' 'gradm'
+	'which' 'sudo' 'nftables' 'vim' 'syslinux'
 	'openssh' 'tree' 'tmux' 'htop' 'lsof' 'lynx')
 
 	option_picked "Pacstrapping"
-	pacstrap /mnt "${def_package_list[@]}" || die 'pacstrap'
-	genfstab -U /mnt >> /mnt/etc/fstab || die 'generate an fstab'
+	pacstrap /mnt "${def_package_list[@]}" || wrn 'pacstrap'
+	option_picked "Installing Syslinux..."
+	syslinux-install_update -i -a -m -c /mnt/ || err 'Failed to install syslinux...'
+	genfstab -U /mnt >> /mnt/etc/fstab || wrn 'Failed to generate an fstab'
 
 	option_picked "Generating Network Configuration"
 	printf '[Match]\nName=ens33\n\n[Address]\n%s\n\n[Route]\n%s\n' \
