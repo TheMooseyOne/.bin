@@ -131,7 +131,7 @@ while [ opt != '' ]
 	read
 	[[ "$REPLY" != 'YES' ]] && exit 1
 	option_picked "Killing pids..."
-	fuser -k -m new_root/old_root
+	fuser -k -m /old_root
 	option_picked "Unmounting old_root"
 	umount -R /old_root || err "Failed to unmount old_root"
 	option_picked "Cleaning up old_root"
