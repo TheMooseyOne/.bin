@@ -46,7 +46,6 @@ while [ opt != '' ]
         1) option_picked "Checking Tools";
         which curl && echo -e "${MENU}Found curl... ${NORMAL}" || wrn "Failed to find curl..."
         which unsquashfs && echo -e "${MENU}Found unsquashfs... ${NORMAL}"|| wrn "Failed to find unsquashfs..."
-        which mdconfig && echo -e "${MENU}Found mdconfig... ${NORMAL}"|| wrn "Failed to find mdconfig..."
         which sha1sum && echo -e "${MENU}Found sha1sum... ${NORMAL}"|| wrn "Failed to find sha1sum..."
 	which md5sum && echo -e "${MENU}Found md5sum... ${NORMAL}" || wrn "Failed to find md5sum..."
 	which vgremove && echo -e "${MENU}Found vgremove... ${NORMAL}" || wrn "Failed to find vgremove..."
@@ -81,10 +80,7 @@ while [ opt != '' ]
              ;;
 
         3) option_picked "Stage 1 Start";
-	#mdconfig -a -t vnode -f "$iso" -u 1
-        #mount -t cd9660 /dev/md1 /mnt/cdrom || err "Failed to mount, check root..."
-
-	mount -o loop "$iso" /mnt/ || err "Failed to mount, check root..."
+	mount -o loop "$iso" /mnt/ || wrn "Failed to mount, check root..."
 	cp -v /mnt/arch/x86_64/airootfs.* . || err "Failed to copy squashfs..."
 	md5sum -c airootfs.md5 || wrn "Chechsum failed..."
 	umount /mnt || wrn "Unmount ISO failed..."
@@ -95,16 +91,21 @@ while [ opt != '' ]
 	mount -o size="$nbytes" -t tmpfs none ./new_root ||  err "Mounting new_root failed..."
 	cp -rv ./squashfs-root/ ./new_root/ || err "Failed to copy squashfs to new_root..."
 	rm -r -- squashfs-root || wrn "Failed to remove squashfs..."
+	
 	option_picked "Creating old_root"
 	mkdir -p new_root/old_root || err "Failed to create old_root..."
+	
 	option_picked "Copying network information"
 	ip a >> new_root/root/ifcfgeth || err "Failed to get ip a info..."
         ip r >> new_root/root/ifcfgeth || err "Failed to get ip r info..."
-	cp ./mooseAIF.sh new_root/root/ && chmod 0755 new_root/root/mooseAIF.sh || wrn "Failed to move script to new_root...${NORMAL}"
+	cp ./CaCTools.sh new_root/root/ && chmod 0755 new_root/root/CaCTools.sh || wrn "Failed to move script to new_root...${NORMAL}"
+	
 	option_picked "Making old root private"
 	mount --make-rprivate / || err "Failed to make old root private..."
+	
 	option_picked "Modprobing"
 	modprobe ext4 && modprobe xfs || err "Failed modprobe...${NORMAL}"
+	
 	option_picked "Pivot root"
 	pivot_root new_root new_root/old_root || err "Failed to pivot root..."
 	cd
@@ -117,7 +118,7 @@ while [ opt != '' ]
 	option_picked "Turning swap off"
 	swapoff -a
 
-	echo -e "${NUMBER}Verify new_root and and run stage2 from new_root/root/mooseAIF.sh${NORMAL}"
+	echo -e "${NUMBER}Verify new_root and and run stage2 from new_root/root/CaCTools.sh${NORMAL}"
 	read -n1 -s
 	clear
 	exit 1;
@@ -157,7 +158,7 @@ while [ opt != '' ]
 
 	option_picked "Formatting disk"
 	mkfs.ext4 -F /dev/sda1 || err "Failed to format disk..."
-	mount /dev/sda1 /mnt || err 'mount disk'
+	mount /dev/sda1 /mnt || err "Failed to mount sda1"
 
 	def_package_list=('bash' 'bzip2' 'coreutils' 'device-mapper' 'diffutils' 'e2fsprogs' 'file' 
 	'filesystem' 'findutils' 'gawk' 'gettext' 'grep' 'gzip'
