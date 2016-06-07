@@ -73,6 +73,7 @@ while [ opt != '' ]
 	curl -C - -#O "$mirror/archlinux/iso/latest/$iso" || err "Download ios failed..."
 	curl -C - -#O "$mirror/archlinux/iso/latest/sha1sums.txt" || err "Download sha1sums failed..."
 	sha1sum --check ./sha1sums.txt
+	
 	echo -e "${NUMBER}Press any key to continue..."
 	read -n1 -s
 	clear
@@ -80,11 +81,18 @@ while [ opt != '' ]
              ;;
 
         3) option_picked "Stage 1 Start";
+        option_picked "Mounting loop device"
 	mount -o loop "$iso" /mnt/ || wrn "Failed to mount, check root..."
+	
+	option_picked "Copying squashfs"
 	cp -v /mnt/arch/x86_64/airootfs.* . || err "Failed to copy squashfs..."
+	
+	option_picked "Checking md5"
 	md5sum -c airootfs.md5 || wrn "Chechsum failed..."
 	umount /mnt || wrn "Unmount ISO failed..."
-	unsquashfs airootfs.sfs || err "Unsquash failed.."
+	
+	option_picked "Unsquashing"
+	unsquashfs airootfs.sfs || err "Unsquash failed..."
 	rm -- airootfs.* || wrn "Failed to clean up old airootfs files..."
 	mkdir -p new_root  || err "Creating new_root failed..."
 	nbytes="$(($(du -s squashfs-root|cut -f1)+100000))K"
@@ -109,14 +117,17 @@ while [ opt != '' ]
 	option_picked "Pivot root"
 	pivot_root new_root new_root/old_root || err "Failed to pivot root..."
 	cd
+	
 	option_picked "Moving old root"
 	for i in {dev,run,sys,proc}; do
     	mount --move /old_root/"$i" /"$i"
 	done
+	
 	option_picked "Restarting daemons"
-	systemctl daemon-reexec
+	systemctl daemon-reexec || wrn "Daemon-reexec failed..."
+	
 	option_picked "Turning swap off"
-	swapoff -a
+	swapoff -a || wrn "Failed to turn swap off..."
 
 	echo -e "${NUMBER}Verify new_root and and run stage2 from new_root/root/CaCTools.sh${NORMAL}"
 	read -n1 -s
