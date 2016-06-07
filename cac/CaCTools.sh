@@ -85,7 +85,7 @@ while [ opt != '' ]
 	mount -o loop "$iso" /mnt/ || wrn "Failed to mount, check root..."
 	
 	option_picked "Copying squashfs"
-	cp -v /mnt/arch/x86_64/airootfs.* . || err "Failed to copy squashfs..."
+	cp /mnt/arch/x86_64/airootfs.* . || err "Failed to copy squashfs..."
 	
 	option_picked "Checking md5"
 	md5sum -c airootfs.md5 || wrn "Chechsum failed..."
@@ -97,7 +97,7 @@ while [ opt != '' ]
 	mkdir -p new_root  || err "Creating new_root failed..."
 	nbytes="$(($(du -s squashfs-root|cut -f1)+100000))K"
 	mount -o size="$nbytes" -t tmpfs none ./new_root ||  err "Mounting new_root failed..."
-	cp -rv ./squashfs-root/* ./new_root/ || err "Failed to copy squashfs to new_root..."
+	cp -R ./squashfs-root/ ./new_root/ || err "Failed to copy squashfs to new_root..."
 	rm -r -- squashfs-root || wrn "Failed to remove squashfs..."
 	
 	option_picked "Creating old_root"
