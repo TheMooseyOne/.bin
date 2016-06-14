@@ -14,8 +14,8 @@ show_menu(){
     echo -e "${MENU}  *   ${NUMBER} 2)${MENU} Download ISO ${NORMAL}"
     echo -e "${MENU}    * ${NUMBER} 3)${MENU} Bootstrap Stage 1 ${NORMAL}"
     echo -e "${MENU}* * * ${NUMBER} 4)${MENU} Bootstrap Stage 2 ${NORMAL}"
-    echo -e "${MENU}      ${NUMBER} 5)${MENU} Pacstrap ${NORMAL}"
-    echo -e "${MENU}      ${NUMBER} 6)${MENU} Set up Environment ${NORMAL}"
+    echo -e "${MENU}      ${NUMBER} 5)${MENU} Partition Disk ${NORMAL}"
+    echo -e "${MENU}      ${NUMBER} 6)${MENU} Pacstrap and Configure ${NORMAL}"
     echo -e "${MENU}*********************************************${NORMAL}"
     echo -e "${ENTER_LINE}Please enter a menu option and enter or ${RED_TEXT}enter to exit. ${NORMAL}"
     read opt
@@ -105,14 +105,14 @@ while [ opt != '' ]
 	mkdir -p new_root/old_root || err "Failed to create old_root..."
 	
 	option_picked "Copying network information"
-	ip a >> new_root/root/ifcfgeth || err "Failed to get ip a info..."
-        ip r >> new_root/root/ifcfgeth || err "Failed to get ip r info..."
+	ip a >> new_root/root/ifcfgeth || wrn "Failed to get ip a info..."
+        ip r >> new_root/root/ifcfgeth || wrn "Failed to get ip r info..."
 	cp ./CaCTools.sh new_root/root/ && chmod 0755 new_root/root/CaCTools.sh || wrn "Failed to move script to new_root...${NORMAL}"
 	
 	option_picked "Making old root private"
 	mount --make-rprivate / || err "Failed to make old root private..."
 	
-	option_picked "Modprobing"
+	option_picked "Modprobing ext4 and xfs"
 	modprobe ext4 && modprobe xfs || err "Failed modprobe...${NORMAL}"
 	
 	option_picked "Pivot root"
@@ -130,7 +130,7 @@ while [ opt != '' ]
 	option_picked "Turning swap off"
 	swapoff -a || wrn "Failed to turn swap off..."
 
-	echo -e "${NUMBER}Verify new_root and and run stage2 from new_root/root/CaCTools.sh${NORMAL}"
+	echo -e "${NUMBER}Verify new_root and and run Stage 2 from new_root/root/CaCTools.sh${NORMAL}"
 	read -n1 -s
 	clear
 	exit 1;
@@ -142,11 +142,11 @@ while [ opt != '' ]
 	echo -e "${NUMBER}wish to continue...${NORMAL}"
 	read
 	[[ "$REPLY" != 'YES' ]] && exit 1
-	option_picked "Killing pids..."
+	option_picked "Killing old_root pids"
 	fuser -k -m /old_root
 	option_picked "Unmounting old_root"
 	umount -R /old_root || err "Failed to unmount old_root"
-	option_picked "Cleaning up old_root"
+	option_picked "Removing up old_root"
 	rm -rf /old_root || wrn "Failed to clean up old_root"
 	option_picked "Killing LVM"
 	vgremove -ff localhost-vg || err "Failed to kill LVM"
@@ -156,7 +156,13 @@ while [ opt != '' ]
 	systemctl start haveged
 	pacman-key --init
 	pacman-key --populate archlinux
+	echo -e "${NUMBER}Prepare to format and partition disk, press any key to continue..."
+	read -n1 -s
+	clear
+	show_menu;
+            ;;
 
+	5) option_picked "Partitioning disk as sda1"
 	#read -r -d '' partition_scheme << 'EOF'
 	#label: dos
 	#label-id: 0x350346e6
@@ -174,6 +180,20 @@ while [ opt != '' ]
 
 
 
+	
+	show_menu;
+            ;;
+
+	6) option_picked "Pacstrap and config";
+	pac_list=('bash' 'linux-grsec' 'bzip2' 'coreutils' 'device-mapper' 'diffutils' 'e2fsprogs' 'file' 'filesystem' 'findutils' 'gawk' 'gettext' 'grep' 'gzip' 'inetutils' 'iproute2' 'iputils' 'less' 'licenses' 'logrotate' 'man-db' 'man-pages' 'pacman' 'pciutils' 'perl' 'procps-ng' 'psmisc' 'sed' 'shadow' 'sysfsutils' 'systemd-sysvcompat' 'tar' 'texinfo' 'usbutils' 'util-linux' 'which' 'sudo' 'nftables' 'vim' 'syslinux' 'openssh' 'tree' 'tmux' 'htop' 'lsof' 'lynx')
+	pacstrap /mnt "${pac_list[@]}" || wrn "Pacstrap failed..."
+	
+	option_picked "Installing Syslinux..."
+	syslinux-install_update -i -a -m -c /mnt/ || err 'Failed to install syslinux...'
+	
+	option_picked "Generating fstab..."
+	genfstab -U /mnt >> /mnt/etc/fstab || wrn 'Failed to generate an fstab'	
+	
 	option_picked "Generating Network Configuration"
 	printf '[Match]\nName=ens33\n\n[Address]\n%s\n\n[Route]\n%s\n' \
     "$(ip a show dev ens33 | awk '/inet / { print "Address=" $2 "\nBroadcast=" $4 }')" \
@@ -182,15 +202,6 @@ while [ opt != '' ]
 	option_picked "Generating Locale"
 	locale-gen || err "Failed to generate locale"
 	show_menu;
-            ;;
-
-	5) option_picked "Pacstrap and config";
-	pac_list=('bash' 'linux-grsec' 'bzip2' 'coreutils' 'device-mapper' 'diffutils' 'e2fsprogs' 'file' 'filesystem' 'findutils' 'gawk' 'gettext' 'grep' 'gzip' 'inetutils' 'iproute2' 'iputils' 'less' 'licenses' 'logrotate' 'man-db' 'man-pages' 'pacman' 'pciutils' 'perl' 'procps-ng' 'psmisc' 'sed' 'shadow' 'sysfsutils' 'systemd-sysvcompat' 'tar' 'texinfo' 'usbutils' 'util-linux' 'which' 'sudo' 'nftables' 'vim' 'syslinux' 'openssh' 'tree' 'tmux' 'htop' 'lsof' 'lynx')
-	pacstrap /mnt "${pac_list[@]}" || wrn "Pacstrap failed..."
-	option_picked "Installing Syslinux..."
-	syslinux-install_update -i -a -m -c /mnt/ || err 'Failed to install syslinux...'
-	genfstab -U /mnt >> /mnt/etc/fstab || wrn 'Failed to generate an fstab'	
-	
 	;;
 
         x)exit;
