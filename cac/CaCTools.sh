@@ -14,7 +14,8 @@ show_menu(){
     echo -e "${MENU}  *   ${NUMBER} 2)${MENU} Download ISO ${NORMAL}"
     echo -e "${MENU}    * ${NUMBER} 3)${MENU} Bootstrap Stage 1 ${NORMAL}"
     echo -e "${MENU}* * * ${NUMBER} 4)${MENU} Bootstrap Stage 2 ${NORMAL}"
-    echo -e "${MENU}      ${NUMBER} 5)${MENU} Stage 3 ${NORMAL}"
+    echo -e "${MENU}      ${NUMBER} 5)${MENU} Pacstrap ${NORMAL}"
+    echo -e "${MENU}      ${NUMBER} 6)${MENU} Set up Environment ${NORMAL}"
     echo -e "${MENU}*********************************************${NORMAL}"
     echo -e "${ENTER_LINE}Please enter a menu option and enter or ${RED_TEXT}enter to exit. ${NORMAL}"
     read opt
@@ -171,19 +172,7 @@ while [ opt != '' ]
 	mkfs.ext4 -F /dev/sda1 || err "Failed to format disk..."
 	mount /dev/sda1 /mnt || err "Failed to mount sda1"
 
-	def_package_list=('bash' 'bzip2' 'coreutils' 'device-mapper' 'diffutils' 'e2fsprogs' 'file' 
-	'filesystem' 'findutils' 'gawk' 'gettext' 'grep' 'gzip'
-	'inetutils' 'iproute2' 'iputils' 'less' 'licenses' 'logrotate' 'man-db'
-	'man-pages' 'pacman' 'pciutils' 'perl' 'procps-ng' 'psmisc' 'sed' 'shadow'
-	'sysfsutils' 'systemd-sysvcompat' 'tar' 'texinfo' 'usbutils' 'util-linux'
-	'which' 'sudo' 'nftables' 'vim' 'syslinux'
-	'openssh' 'tree' 'tmux' 'htop' 'lsof' 'lynx')
 
-	option_picked "Pacstrapping"
-	pacstrap /mnt "${def_package_list[@]}" || wrn 'pacstrap'
-	option_picked "Installing Syslinux..."
-	syslinux-install_update -i -a -m -c /mnt/ || err 'Failed to install syslinux...'
-	genfstab -U /mnt >> /mnt/etc/fstab || wrn 'Failed to generate an fstab'
 
 	option_picked "Generating Network Configuration"
 	printf '[Match]\nName=ens33\n\n[Address]\n%s\n\n[Route]\n%s\n' \
@@ -194,6 +183,15 @@ while [ opt != '' ]
 	locale-gen || err "Failed to generate locale"
 	show_menu;
             ;;
+
+	5) option_picked "Pacstrap and config";
+	pac_list=('bash' 'linux-grsec' 'bzip2' 'coreutils' 'device-mapper' 'diffutils' 'e2fsprogs' 'file' 'filesystem' 'findutils' 'gawk' 'gettext' 'grep' 'gzip' 'inetutils' 'iproute2' 'iputils' 'less' 'licenses' 'logrotate' 'man-db' 'man-pages' 'pacman' 'pciutils' 'perl' 'procps-ng' 'psmisc' 'sed' 'shadow' 'sysfsutils' 'systemd-sysvcompat' 'tar' 'texinfo' 'usbutils' 'util-linux' 'which' 'sudo' 'nftables' 'vim' 'syslinux' 'openssh' 'tree' 'tmux' 'htop' 'lsof' 'lynx')
+	pacstrap /mnt "${pac_list[@]}" || wrn "Pacstrap failed..."
+	option_picked "Installing Syslinux..."
+	syslinux-install_update -i -a -m -c /mnt/ || err 'Failed to install syslinux...'
+	genfstab -U /mnt >> /mnt/etc/fstab || wrn 'Failed to generate an fstab'	
+	
+	;;
 
         x)exit;
         ;;
