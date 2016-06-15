@@ -15,7 +15,9 @@ show_menu(){
     echo -e "${MENU}    * ${NUMBER} 3)${MENU} Bootstrap Stage 1 ${NORMAL}"
     echo -e "${MENU}* * * ${NUMBER} 4)${MENU} Bootstrap Stage 2 ${NORMAL}"
     echo -e "${MENU}      ${NUMBER} 5)${MENU} Partition Disk ${NORMAL}"
-    echo -e "${MENU}      ${NUMBER} 6)${MENU} Pacstrap and Configure ${NORMAL}"
+    echo -e "${MENU}      ${NUMBER} 6)${MENU} Pacstrap${NORMAL}"
+    echo -e "${MENU}      ${NUMBER} 7)${MENU} Initial Configuration ${NORMAL}"
+    echo -e "${MENU}      ${NUMBER} 8)${MENU} Update Config Files ${NORMAL}"
     echo -e "${MENU}*********************************************${NORMAL}"
     echo -e "${ENTER_LINE}Please enter a menu option and enter or ${RED_TEXT}enter to exit. ${NORMAL}"
     read opt
@@ -83,7 +85,7 @@ while [ opt != '' ]
 
         3) option_picked "Stage 1 Start";
         option_picked "Mounting loop device"
-	mount -o loop "$iso" /mnt/ || wrn "Failed to mount, check root..."
+	mount -o loop "$iso" /mnt/ || err "Failed to mount iso to /mnt/ check root..."
 	
 	option_picked "Copying squashfs"
 	cp /mnt/arch/x86_64/airootfs.* . || err "Failed to copy squashfs..."
@@ -142,27 +144,34 @@ while [ opt != '' ]
 	echo -e "${NUMBER}wish to continue...${NORMAL}"
 	read
 	[[ "$REPLY" != 'YES' ]] && exit 1
+	
 	option_picked "Killing old_root pids"
 	fuser -k -m /old_root
+	
 	option_picked "Unmounting old_root"
 	umount -R /old_root || err "Failed to unmount old_root"
+	
 	option_picked "Removing up old_root"
 	rm -rf /old_root || wrn "Failed to clean up old_root"
+	
 	option_picked "Killing LVM"
 	vgremove -ff localhost-vg || err "Failed to kill LVM"
+
 	option_picked "Setting DNS to use google 8.8.8.8"
-	echo 'nameserver 8.8.8.8' > /etc/resolv.conf || err "Failed to set DNS"
+	echo 'nameserver 8.8.8.8' > /etc/resolv.conf || wrn "Failed to set DNS"
+	
 	option_picked "Initializing the pacman keyring"
 	systemctl start haveged
 	pacman-key --init
 	pacman-key --populate archlinux
+
 	echo -e "${NUMBER}Prepare to format and partition disk, press any key to continue..."
 	read -n1 -s
 	clear
 	show_menu;
             ;;
 
-	5) option_picked "Partitioning disk as sda1"
+	5) option_picked "Partitioning disk as sda1";
 	#read -r -d '' partition_scheme << 'EOF'
 	#label: dos
 	#label-id: 0x350346e6
@@ -170,24 +179,27 @@ while [ opt != '' ]
 	#unit: sectors
 	#/dev/sda1 : start=2048, size=+10G, type=83, bootable
 	#EOF
-
-	option_picked "Partitioning disk"
 	#sfdisk /dev/sda <<< "$partition_scheme" || err "Faield to partition disk..."
 
 	option_picked "Formatting disk"
 	mkfs.ext4 -F /dev/sda1 || err "Failed to format disk..."
 	mount /dev/sda1 /mnt || err "Failed to mount sda1"
 
-
-
 	
 	show_menu;
             ;;
 
-	6) option_picked "Pacstrap and config";
-	pac_list=('bash' 'linux-grsec' 'bzip2' 'coreutils' 'device-mapper' 'diffutils' 'e2fsprogs' 'file' 'filesystem' 'findutils' 'gawk' 'gettext' 'grep' 'gzip' 'inetutils' 'iproute2' 'iputils' 'less' 'licenses' 'logrotate' 'man-db' 'man-pages' 'pacman' 'pciutils' 'perl' 'procps-ng' 'psmisc' 'sed' 'shadow' 'sysfsutils' 'systemd-sysvcompat' 'tar' 'texinfo' 'usbutils' 'util-linux' 'which' 'sudo' 'nftables' 'vim' 'syslinux' 'openssh' 'tree' 'tmux' 'htop' 'lsof' 'lynx')
+	6) option_picked "Pacstrap Start";
+	pac_list=('bash' 'linux-grsec' 'bzip2' 'coreutils' 'device-mapper' 'diffutils' 'e2fsprogs' 'file' 'filesystem' 'findutils' 
+	'gawk' 'gettext' 'grep' 'gzip' 'inetutils' 'iproute2' 'iputils' 'less' 'licenses' 'logrotate' 'man-db' 'man-pages' 'pacman' 
+	'pciutils' 'perl' 'procps-ng' 'psmisc' 'sed' 'shadow' 'sysfsutils' 'systemd-sysvcompat' 'tar' 'texinfo' 'usbutils' 
+	'util-linux' 'which' 'sudo' 'nftables' 'vim' 'syslinux' 'openssh' 'tree' 'tmux' 'htop' 'lsof' 'lynx' 'vim-plugins')
 	pacstrap /mnt "${pac_list[@]}" || wrn "Pacstrap failed..."
 	
+	show_menu;
+	;;
+	
+	7) option_picked "Syslinux, fstab, .network and locale config";
 	option_picked "Installing Syslinux..."
 	syslinux-install_update -i -a -m -c /mnt/ || err 'Failed to install syslinux...'
 	
@@ -201,6 +213,26 @@ while [ opt != '' ]
 	
 	option_picked "Generating Locale"
 	locale-gen || err "Failed to generate locale"
+	
+	show_menu;
+	;;
+	
+	8) option_picked "Setting up Environment";
+	
+	option_picked "Updating ~/.bash_profile"
+	printf "alias ls='ls -a --color' \n 
+	alias ss='systemctl status' \n 
+	alias sf='systemctl --failed'\n 
+	alias jr='journalctl -r' \n 
+	alias fb='fbset -g 900 600 900 600 32' \n 
+	alias svh='sudo vim /etc/httpd/conf/httpd.conf' \n
+	alias svvh='sudo vim /etc/httpd/conf/extra/httpd-vhost.conf'" >> ~/.bash_profile 
+	
+	option_picked "Updating ~/.vimrc"
+	printf ":set number \n
+	:syntax on \n
+	cmap w!! %!sudo tee > /dev/null %" >> ~/.vimrc
+	
 	show_menu;
 	;;
 
