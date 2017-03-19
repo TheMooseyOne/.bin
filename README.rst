@@ -1,14 +1,7 @@
-Ghostils
+Moosetils
 ========
 
-This is a small set of tools that I've written for personal use and find to be incredibly helpful.
-Despite the fact that all these tools are fairly unconnected (aside from the fact that I made them), each individual tool is small enough that I do not feel it makes sense to give each its own repository.
+This is a small set of tools that I've written for personal use and might be useful to someone at some point.
 
-So, this repo is a bit of a grab-bag of helpful utilities I have written.
+The bootstrap utility is very much a work in progress and will certainly brick your system (which will require a complete redeploy) if you don't read it first.
 
-As always, all contributions, comments, suggestions and concerns are welcome.
-
-To-Do
------
-
-- [ ] A `ghcal <https://github.com/IonicaBizau/ghcal>`_ port to C
